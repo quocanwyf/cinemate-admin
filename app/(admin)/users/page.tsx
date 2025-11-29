@@ -1,55 +1,87 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/api";
-import { UsersResponse } from "@/types/user";
+import { User } from "@/types/user";
 import { Pagination } from "@/components/ui/Pagination";
-import { Search, UserX, UserCheck, Loader2 } from "lucide-react";
+import { UserDetailModal } from "@/components/users/UserDetailModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { showToast } from "@/lib/toast";
+import {
+  Search,
+  Ban,
+  CheckCircle,
+  Loader2,
+  Mail,
+  Calendar,
+} from "lucide-react";
 
 export default function UsersPage() {
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const queryClient = useQueryClient();
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [banDialog, setBanDialog] = useState({
+    isOpen: false,
+    userId: "",
+    userName: "",
+    currentStatus: false,
+  });
 
-  const { data, isLoading, error } = useQuery<UsersResponse>({
-    queryKey: ["users", page, search],
+  const queryClient = useQueryClient();
+  const limit = 10;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["users", currentPage, search, limit],
     queryFn: async () => {
-      const response = await adminApi.getUsers({ page, limit: 10, search });
+      const response = await adminApi.getUsers({
+        page: currentPage,
+        limit,
+        search: search || undefined,
+      });
       return response.data;
     },
   });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: ({
-      userId,
-      is_active,
-    }: {
-      userId: string;
-      is_active: boolean;
-    }) => adminApi.updateUserStatus(userId, is_active),
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      adminApi.updateUserStatus(userId, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      setBanDialog({
+        isOpen: false,
+        userId: "",
+        userName: "",
+        currentStatus: false,
+      });
+      showToast.success("Cập nhật trạng thái user thành công!");
+    },
+    onError: () => {
+      showToast.error("Có lỗi xảy ra khi cập nhật trạng thái user!");
     },
   });
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchInput);
-    setPage(1);
+  const handleToggleBan = (user: User, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBanDialog({
+      isOpen: true,
+      userId: user.id,
+      userName: user.display_name || "",
+      currentStatus: user.is_active,
+    });
   };
 
-  const toggleUserStatus = (userId: string, currentStatus: boolean) => {
-    if (
-      confirm(
-        `Bạn có chắc muốn ${
-          currentStatus ? "vô hiệu hóa" : "kích hoạt"
-        } user này?`
-      )
-    ) {
-      updateStatusMutation.mutate({ userId, is_active: !currentStatus });
-    }
+  const confirmToggleBan = () => {
+    toggleUserStatusMutation.mutate({
+      userId: banDialog.userId,
+      isActive: !banDialog.currentStatus,
+    });
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
   };
 
   if (isLoading) {
@@ -64,156 +96,198 @@ export default function UsersPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center text-red-600">
-          <p className="text-lg">Lỗi tải dữ liệu!</p>
+          <p className="text-lg">Lỗi tải dữ liệu users!</p>
+          <p className="text-sm mt-2">{String(error)}</p>
         </div>
       </div>
     );
   }
 
+  // ← FIX: Parse đúng response structure
+  const users = data?.data || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
+
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
-        <p className="text-gray-600 mt-2">Quản lý người dùng hệ thống</p>
-      </div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Quản lý Users</h1>
+          <p className="text-gray-600 mt-2">Tổng số: {total} users</p>
+        </div>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="flex-1 relative">
+        <div className="flex items-center gap-4">
+          <div className="relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               size={20}
             />
             <input
               type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm kiếm theo email hoặc tên..."
-              className="w-full pl-10 pr-4 text-black py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Tìm kiếm user..."
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Tìm kiếm
-          </button>
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setSearchInput("");
-                setPage(1);
-              }}
-              className="px-4 py-2 border text-black border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Clear
-            </button>
-          )}
-        </form>
+        </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow overflow-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Tên
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ngày tham gia
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Ratings
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Comments
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Trạng thái
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Ngày tạo
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Hành động
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Thao tác
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {data?.data.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {user.email}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {user.display_name || "-"}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {user._count?.ratings ?? 0}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {user._count?.comments ?? 0}
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.is_active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {user.is_active ? "Active" : "Banned"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString("vi-VN")}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => toggleUserStatus(user.id, user.is_active)}
-                    disabled={updateStatusMutation.isPending}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      user.is_active
-                        ? "bg-red-100 text-red-700 hover:bg-red-200"
-                        : "bg-green-100 text-green-700 hover:bg-green-200"
-                    } disabled:opacity-50`}
-                  >
-                    {user.is_active ? (
-                      <>
-                        <UserX size={16} />
-                        Ban
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck size={16} />
-                        Unban
-                      </>
-                    )}
-                  </button>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  {search
+                    ? `Không tìm thấy user với từ khóa "${search}"`
+                    : "Chưa có user nào"}
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((user: User) => (
+                <tr
+                  key={user.id}
+                  onClick={() => setSelectedUserId(user.id)}
+                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.display_name || "User avatar"}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
+                          {user.display_name
+                            ? user.display_name.charAt(0).toUpperCase()
+                            : "U"}
+                        </div>
+                      )}
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {user.display_name}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Mail size={16} />
+                      {user.email}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Calendar size={16} />
+                      {new Date(user.created_at).toLocaleDateString("vi-VN")}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {user.is_active ? "Hoạt động" : "Bị cấm"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={(e) => handleToggleBan(user, e)}
+                      disabled={toggleUserStatusMutation.isPending}
+                      className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1 ${
+                        user.is_active
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-green-100 text-green-700 hover:bg-green-200"
+                      } disabled:opacity-50`}
+                    >
+                      {user.is_active ? (
+                        <>
+                          <Ban size={16} />
+                          Ban
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={16} />
+                          Unban
+                        </>
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+      </div>
 
-        {/* Pagination */}
-        {data && data.meta?.totalPages > 1 && (
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6">
           <Pagination
-            currentPage={page}
-            totalPages={data.meta.totalPages}
-            onPageChange={setPage}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
           />
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Stats */}
-      <div className="mt-6 text-sm text-gray-600">
-        Hiển thị {data?.data.length || 0} / {data?.meta?.total || 0} users
-      </div>
+      {/* User Detail Modal */}
+      {selectedUserId && (
+        <UserDetailModal
+          isOpen={!!selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+          userId={selectedUserId}
+        />
+      )}
+
+      {/* Ban/Unban Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={banDialog.isOpen}
+        onClose={() =>
+          setBanDialog({
+            isOpen: false,
+            userId: "",
+            userName: "",
+            currentStatus: false,
+          })
+        }
+        onConfirm={confirmToggleBan}
+        title={
+          banDialog.currentStatus ? "Xác nhận Ban user" : "Xác nhận Unban user"
+        }
+        message={`Bạn có chắc muốn ${
+          banDialog.currentStatus ? "cấm" : "bỏ cấm"
+        } user "${banDialog.userName}"?`}
+        confirmText={banDialog.currentStatus ? "Ban" : "Unban"}
+        cancelText="Hủy"
+        isLoading={toggleUserStatusMutation.isPending}
+      />
     </div>
   );
 }

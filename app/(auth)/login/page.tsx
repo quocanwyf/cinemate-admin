@@ -39,17 +39,21 @@ export default function LoginPage() {
         data
       );
 
-      const { access_token } = response.data;
+      console.log("Login Response:", response.data);
+
+      const { accessToken } = response.data;
+
+      console.log("Access Token:", accessToken);
 
       // Lấy thông tin admin
       const adminResponse = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/admin/auth/me`,
         {
-          headers: { Authorization: `Bearer ${access_token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
 
-      setAuth(access_token, adminResponse.data);
+      setAuth(accessToken, adminResponse.data);
       router.push("/dashboard");
     } catch (err: unknown) {
       console.error("Login failed:", err);

@@ -18,6 +18,7 @@ const menuItems = [
   { href: "/content/lists", label: "Featured Lists", icon: List },
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/moderation/comments", label: "Comments", icon: MessageSquare },
+  { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
 ];
 
 export function Sidebar() {

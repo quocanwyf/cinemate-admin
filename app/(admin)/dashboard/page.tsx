@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react"; // ← Import useState
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/lib/api";
 import { DashboardStats } from "@/types/dashboard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
+import { UserDetailModal } from "@/components/users/UserDetailModal"; // ← Import modal
 import {
   Users,
   UserCheck,
@@ -14,13 +16,15 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null); // ← State cho modal
+
   const { data, isLoading, error } = useQuery<DashboardStats>({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const response = await adminApi.getDashboardStats();
       return response.data;
     },
-    refetchInterval: 30000, // Refetch mỗi 30 giây
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
@@ -122,7 +126,11 @@ export default function DashboardPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {data?.recentUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr
+                  key={user.id}
+                  onClick={() => setSelectedUserId(user.id)} // ← Click để mở modal
+                  className="hover:bg-blue-50 cursor-pointer transition-colors" // ← Thêm hover effect
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {user.email}
                   </td>
@@ -138,6 +146,15 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* ← User Detail Modal */}
+      {selectedUserId && (
+        <UserDetailModal
+          isOpen={!!selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+          userId={selectedUserId}
+        />
+      )}
     </div>
   );
 }
