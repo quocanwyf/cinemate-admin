@@ -7,7 +7,6 @@ import {
   Users,
   Film,
   MessageSquare,
-  List,
   ChevronRight,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -15,8 +14,6 @@ import { useAuthStore } from "@/store/authStore";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/users", label: "User Management", icon: Users },
-  { href: "/content/lists", label: "Featured Lists", icon: List },
-  { href: "/movies", label: "Movies", icon: Film },
   { href: "/moderation/comments", label: "Comments", icon: MessageSquare },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
 ];
