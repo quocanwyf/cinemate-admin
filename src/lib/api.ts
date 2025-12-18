@@ -95,4 +95,8 @@ export const adminApi = {
 
     return response.data;
   },
+
+  // User Recommendations (Admin)
+  getUserRecommendations: (userId: string) =>
+    api.get(`/recommendations/for-user/${userId}`).then((res) => res.data),
 };

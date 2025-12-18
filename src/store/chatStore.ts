@@ -15,7 +15,7 @@ interface ChatState {
   setSelectedConversationId: (id: string | null) => void;
   setIsConnected: (connected: boolean) => void;
   setMessages: (messages: Message[]) => void; // ✅ THÊM
-  setIsLoadingMessages: (loading: boolean) => void; // ✅ THÊM
+  setIsLoadingMessages: (loading: boolean) => void;
 
   addMessage: (message: Message) => void;
   updateTyping: (data: TypingData) => void;

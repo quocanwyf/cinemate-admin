@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
@@ -16,6 +17,7 @@ import {
   Shield,
   CheckCircle,
   XCircle,
+  Sparkles,
 } from "lucide-react";
 import { Backdrop } from "../ui/Backdrop";
 import { Modal } from "../ui/Modal";
@@ -108,6 +110,12 @@ export function UserDetailModal({
       const response = await adminApi.getUserById(userId);
       return response.data;
     },
+    enabled: isOpen && !!userId,
+  });
+
+  const { data: recommendations, isLoading: isLoadingRecs } = useQuery({
+    queryKey: ["user-recommendations", userId],
+    queryFn: () => adminApi.getUserRecommendations(userId),
     enabled: isOpen && !!userId,
   });
 
@@ -425,6 +433,67 @@ export function UserDetailModal({
                 </div>
               </div>
             )}
+
+            {/* AI Recommendations */}
+            <div className="border-t pt-6">
+              <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <Sparkles className="text-purple-600" size={24} />
+                Phim được gợi ý bởi AI
+              </h4>
+
+              {isLoadingRecs ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+                </div>
+              ) : recommendations && recommendations.length > 0 ? (
+                <div className="grid grid-cols-5 gap-4">
+                  {recommendations.slice(0, 10).map((movie: any) => (
+                    <div key={movie.id} className="group">
+                      <div className="relative overflow-hidden rounded-lg shadow-md group-hover:shadow-xl transition-all">
+                        {movie.poster_path ? (
+                          <img
+                            src={`https://image.tmdb.org/t/p/w200${movie.poster_path}`}
+                            alt={movie.title}
+                            className="w-full h-auto group-hover:scale-110 transition-transform duration-300"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder-movie.png";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full aspect-2/3 bg-gray-200 flex items-center justify-center">
+                            <Film className="text-gray-400" size={32} />
+                          </div>
+                        )}
+                        {movie.vote_average && (
+                          <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                            <Star size={12} fill="white" />
+                            {movie.vote_average.toFixed(1)}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-700 mt-2 truncate font-medium">
+                        {movie.title}
+                      </p>
+                      {movie.release_date && (
+                        <p className="text-xs text-gray-500">
+                          {new Date(movie.release_date).getFullYear()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 font-medium mb-2">
+                    Chưa có đủ dữ liệu để gợi ý phim
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    User cần đánh giá ít nhất 3 phim với điểm ≥4 sao
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* View History */}
             {user.ViewHistory && user.ViewHistory.length > 0 && (
