@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import Image from "next/image";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -40,8 +41,14 @@ export function Sidebar() {
       {/* Logo Section */}
       <div className="p-6 border-b border-slate-700/50 bg-slate-800/50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-            <Film className="w-6 h-6 text-white" />
+          <div className="relative w-12 h-12 rounded-full overflow-hidden  border-blue-500 shadow-lg">
+            <Image
+              src="/cinemate-logo-icon.png"
+              alt="CineMate logo"
+              fill
+              className="object-cover scale-140"
+              priority
+            />
           </div>
           <div>
             <h1 className="text-xl font-bold bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
